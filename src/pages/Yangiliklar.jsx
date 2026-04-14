@@ -1,273 +1,363 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  Card,
-  Badge,
-  Button,
-  Modal,
-  FormField,
-  EmptyState,
-} from "../components/Ui";
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Star,
+  Calendar,
+  Newspaper,
+  AlertCircle,
+} from "lucide-react";
+import { Button, Modal, FormField } from "../components/Ui";
+import request from "../api";
 
-const initialNews = [
-  {
-    id: 1,
-    title: "Ochiq Eshiklar Kuni — Muhandislik",
-    date: "20 Mart, 2026",
-    category: "Tadbir",
-    status: "published",
-    excerpt:
-      "TATU Muhandislik Maktabi ochiq eshiklar kuniga taklif etadi. Barcha dasturlar bilan tanishing.",
-  },
-  {
-    id: 2,
-    title: "MSc Sun'iy Intellekt dasturiga qabul boshlandi",
-    date: "15 Mart, 2026",
-    category: "Qabul",
-    status: "published",
-    excerpt:
-      "2026-yil uchun qabul arizalari qabul qilinmoqda. Muddati: 1 Iyun 2026.",
-  },
-  {
-    id: 3,
-    title: "TATU tadqiqot markazi yangi grant yutdi",
-    date: "10 Mart, 2026",
-    category: "Tadqiqot",
-    status: "draft",
-    excerpt:
-      "Xalqaro hamkorlik doirasida 500,000 USD miqdorida grant mablag'i ajratildi.",
-  },
+const CAT_KEYS = [
+  { value: "innovation", label: "Innovatsiya" },
+  { value: "education", label: "Ta'lim" },
+  { value: "event", label: "Tadbir" },
+  { value: "startup", label: "Startup" },
 ];
 
-const emptyForm = {
-  title: "",
-  date: "",
-  category: "Yangilik",
-  status: "draft",
-  excerpt: "",
-};
-const categories = [
-  "Tadbir",
-  "Qabul",
-  "Tadqiqot",
-  "Yangilik",
-  "E'lon",
-  "Hamkorlik",
+const LANGS = [
+  { key: "uz", label: "UZ" },
+  { key: "ru", label: "RU" },
+  { key: "en", label: "EN" },
 ];
 
 export default function Yangiliklar() {
-  const [data, setData] = useState(initialNews);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [search, setSearch] = useState("");
   const [deleteId, setDeleteId] = useState(null);
+  const [form, setForm] = useState({
+    cat_key: "innovation",
+    is_featured: false,
+  });
+  const [activeLang, setActiveLang] = useState("uz");
+  const [search, setSearch] = useState("");
 
-  const openAdd = () => {
-    setEditing(null);
-    setForm(emptyForm);
-    setModalOpen(true);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await request.get("/news?select=*&order=created_at.desc");
+      setData(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const openEdit = (item) => {
     setEditing(item.id);
     setForm({ ...item });
+    setActiveLang("uz");
     setModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (editing) {
-      setData(
-        data.map((d) => (d.id === editing ? { ...form, id: editing } : d)),
-      );
-    } else {
-      setData([...data, { ...form, id: Date.now() }]);
+  const openCreate = () => {
+    setEditing(null);
+    setForm({ cat_key: "innovation", is_featured: false });
+    setActiveLang("uz");
+    setModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      if (editing) await request.patch(`/news?id=eq.${editing}`, form);
+      else await request.post("/news", form);
+      fetchData();
+      setModalOpen(false);
+    } catch (e) {
+      alert("Xatolik!");
     }
-    setModalOpen(false);
   };
 
-  const toggleStatus = (id) => {
-    setData(
-      data.map((d) =>
-        d.id === id
-          ? { ...d, status: d.status === "published" ? "draft" : "published" }
-          : d,
-      ),
-    );
+  const handleDelete = async () => {
+    try {
+      await request.delete(`/news?id=eq.${deleteId}`);
+      setData((d) => d.filter((x) => x.id !== deleteId));
+      setDeleteId(null);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const filtered = data.filter(
-    (d) =>
-      d.title.toLowerCase().includes(search.toLowerCase()) ||
-      d.category.toLowerCase().includes(search.toLowerCase()),
+  const filtered = data.filter((d) =>
+    d.title_uz?.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <p className="text-sm text-slate-500">{data.length} ta yangilik</p>
-        <div className="flex items-center gap-3 flex-wrap">
-          <input
-            className="admin-input w-48"
-            placeholder="Qidirish..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <Button onClick={openAdd}>+ Yangi E'lon</Button>
+    <div className="p-4 md:p-6 space-y-6 bg-slate-50/50 min-h-screen">
+      {/* --- HEADER --- */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+            <Newspaper className="text-blue-600" />
+            Yangiliklar
+          </h1>
+        </div>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+            />
+            <input
+              className="w-full md:w-72 pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+              placeholder="Qidirish..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <button
+            onClick={openCreate}
+            className="bg-blue-600 text-white px-5 py-2.5 rounded-2xl flex items-center gap-2 text-sm font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
+          >
+            <Plus size={20} />
+            <span className="hidden sm:inline">Qo'shish</span>
+          </button>
         </div>
       </div>
 
-      <Card>
-        {filtered.length === 0 ? (
-          <EmptyState icon="📰" title="Yangilik topilmadi" />
-        ) : (
+      {/* --- CARDS GRID --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {filtered.map((item) => (
           <div
-            className="divide-y"
-            style={{ borderColor: "rgba(255,255,255,0.05)" }}
+            key={item.id}
+            className="bg-white border border-slate-200 rounded-[2rem] flex flex-col shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden"
           >
-            {filtered.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-start gap-4 px-6 py-4 hover:bg-white/2 transition-colors flex-wrap md:flex-nowrap"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <Badge color="blue">{item.category}</Badge>
-                    <Badge
-                      color={item.status === "published" ? "green" : "slate"}
-                    >
-                      {item.status === "published"
-                        ? "E'lon qilingan"
-                        : "Qoralama"}
-                    </Badge>
-                  </div>
-                  <h3 className="text-sm font-semibold text-white mt-1.5 mb-1">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 line-clamp-2">
-                    {item.excerpt}
-                  </p>
-                  <p className="text-xs text-slate-600 mt-1">{item.date}</p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => toggleStatus(item.id)}
-                    className="text-xs px-3 py-1.5 rounded-lg transition-colors font-medium"
-                    style={{
-                      background:
-                        item.status === "published"
-                          ? "rgba(100,116,139,0.15)"
-                          : "rgba(34,197,94,0.12)",
-                      color:
-                        item.status === "published" ? "#94a3b8" : "#4ade80",
-                    }}
-                  >
-                    {item.status === "published" ? "Yashirish" : "E'lon qilish"}
-                  </button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => openEdit(item)}
-                  >
-                    ✏️
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => setDeleteId(item.id)}
-                  >
-                    🗑
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+            {/* Yuqori rangli chiziq */}
+            <div className="h-1.5 w-full bg-blue-500" />
 
+            {/* Rasm */}
+            <div className="relative h-48 bg-slate-100 overflow-hidden">
+              <img
+                src={`https://img.youtube.com/vi/${extractVideoId(item.embed_url)}/mqdefault.jpg`}
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                alt=""
+              />
+              {/* Kategoriya badge */}
+              <div className="absolute top-3 left-3">
+                <span className="bg-white/95 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold text-blue-600 border border-blue-50 shadow-sm uppercase tracking-wider">
+                  {item.cat_uz ||
+                    CAT_KEYS.find((c) => c.value === item.cat_key)?.label ||
+                    "Yangilik"}
+                </span>
+              </div>
+              {/* Featured yulduz */}
+              {item.is_featured && (
+                <div className="absolute top-3 right-3 bg-amber-400 p-1.5 rounded-full shadow-md">
+                  <Star size={12} fill="white" className="text-white" />
+                </div>
+              )}
+            </div>
+
+            {/* Kontent */}
+            <div className="p-6 flex-1 flex flex-col">
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 font-bold mb-3 uppercase tracking-wide">
+                <Calendar size={13} />
+                {item.date_label || "—"}
+              </div>
+
+              <h3 className="text-lg font-bold text-slate-900 mb-2 leading-tight line-clamp-2">
+                {item.title_uz}
+              </h3>
+
+              <p className="text-sm text-slate-400 mb-4 line-clamp-3 italic flex-1">
+                {item.excerpt_uz || "Tavsif yo'q."}
+              </p>
+            </div>
+
+            {/* Footer tugmalari — Akademik Dasturlar uslubi */}
+            <div className="flex border-t border-slate-100 bg-slate-50/50">
+              <button
+                onClick={() => openEdit(item)}
+                className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold text-blue-600 hover:bg-white transition-colors"
+              >
+                <Edit2 size={16} /> Tahrirlash
+              </button>
+              <button
+                onClick={() => setDeleteId(item.id)}
+                className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold text-red-500 hover:bg-white transition-colors"
+              >
+                <Trash2 size={16} /> O'chirish
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* --- FORM MODAL --- */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editing ? "Yangilikni Tahrirlash" : "Yangi E'lon Qo'shish"}
+        title={editing ? "Tahrirlash" : "Yangi yangilik"}
       >
-        <div className="space-y-4">
-          <FormField label="Sarlavha" required>
+        <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-2">
+          {/* Til tabs */}
+          <div className="flex bg-slate-100 p-1 rounded-2xl sticky top-0 z-20">
+            {LANGS.map((l) => (
+              <button
+                key={l.key}
+                onClick={() => setActiveLang(l.key)}
+                className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all ${
+                  activeLang === l.key
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-slate-500"
+                }`}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+
+          <FormField label={`SARLAVHA (${activeLang.toUpperCase()})`}>
             <input
-              className="admin-input"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="Yangilik sarlavhasi"
+              className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm outline-none focus:border-blue-500 transition-all"
+              value={form[`title_${activeLang}`] || ""}
+              onChange={(e) =>
+                setForm({ ...form, [`title_${activeLang}`]: e.target.value })
+              }
             />
           </FormField>
+
+          <FormField label={`TAVSIF (${activeLang.toUpperCase()})`}>
+            <textarea
+              className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm outline-none focus:border-blue-500 min-h-[100px]"
+              value={form[`excerpt_${activeLang}`] || ""}
+              onChange={(e) =>
+                setForm({ ...form, [`excerpt_${activeLang}`]: e.target.value })
+              }
+            />
+          </FormField>
+
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Kategoriya">
+            <FormField label="KATEGORIYA">
               <select
-                className="admin-input"
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="w-full px-3 py-3 border border-slate-200 rounded-2xl text-sm bg-white outline-none"
+                value={form.cat_key}
+                onChange={(e) => setForm({ ...form, cat_key: e.target.value })}
               >
-                {categories.map((c) => (
-                  <option key={c}>{c}</option>
+                {CAT_KEYS.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
                 ))}
               </select>
             </FormField>
-            <FormField label="Sana">
+            <FormField label="SANA BELGISI">
               <input
-                className="admin-input"
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm outline-none focus:border-blue-500 transition-all"
+                placeholder="20 Iyun, 2024"
+                value={form.date_label || ""}
+                onChange={(e) =>
+                  setForm({ ...form, date_label: e.target.value })
+                }
               />
             </FormField>
           </div>
-          <FormField label="Qisqacha mazmun">
-            <textarea
-              className="admin-input"
-              value={form.excerpt}
-              onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
-              placeholder="Yangilik haqida qisqacha..."
+
+          <FormField label="YOUTUBE LINK">
+            <input
+              className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm outline-none focus:border-blue-500 transition-all"
+              placeholder="https://youtube.com/embed/..."
+              value={form.embed_url || ""}
+              onChange={(e) => setForm({ ...form, embed_url: e.target.value })}
             />
           </FormField>
-          <FormField label="Holat">
-            <select
-              className="admin-input"
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-            >
-              <option value="draft">Qoralama</option>
-              <option value="published">E'lon qilingan</option>
-            </select>
-          </FormField>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
-              Bekor qilish
-            </Button>
-            <Button onClick={handleSave}>💾 Saqlash</Button>
-          </div>
-        </div>
-      </Modal>
 
-      <Modal
-        isOpen={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        title="Tasdiqlash"
-      >
-        <p className="text-slate-400 text-sm mb-6">
-          Bu yangilikni o'chirmoqchimisiz?
-        </p>
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={() => setDeleteId(null)}>
+          <label className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 cursor-pointer">
+            <span className="text-sm font-bold text-slate-700">
+              Asosiy sahifada ko'rsatish
+            </span>
+            <div
+              onClick={() =>
+                setForm({ ...form, is_featured: !form.is_featured })
+              }
+              className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-all ${
+                form.is_featured
+                  ? "bg-blue-600 border-blue-600"
+                  : "bg-white border-slate-300"
+              }`}
+            >
+              {form.is_featured && (
+                <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                  <path
+                    d="M1 4L4.5 7.5L11 1"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </div>
+          </label>
+        </div>
+
+        <div className="flex gap-3 mt-8 pt-5 border-t">
+          <Button
+            variant="secondary"
+            onClick={() => setModalOpen(false)}
+            className="flex-1 rounded-2xl py-3.5"
+          >
             Bekor qilish
           </Button>
           <Button
-            variant="danger"
-            onClick={() => {
-              setData(data.filter((d) => d.id !== deleteId));
-              setDeleteId(null);
-            }}
+            onClick={handleSave}
+            className="flex-1 bg-blue-600 text-white rounded-2xl py-3.5 font-bold shadow-xl shadow-blue-200"
           >
-            🗑 O'chirish
+            Saqlash
           </Button>
+        </div>
+      </Modal>
+
+      {/* --- DELETE MODAL --- */}
+      <Modal
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        title="O'chirish"
+      >
+        <div className="text-center py-4 space-y-4">
+          <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
+            <AlertCircle size={40} />
+          </div>
+          <p className="text-sm text-slate-500">
+            Haqiqatan ham ushbu yangilikni o'chirmoqchimisiz?
+          </p>
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteId(null)}
+              className="flex-1 rounded-2xl"
+            >
+              Qolsin
+            </Button>
+            <Button
+              onClick={handleDelete}
+              className="flex-1 bg-red-600 text-white rounded-2xl font-bold"
+            >
+              O'chirilsin
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
   );
+}
+
+function extractVideoId(url) {
+  if (!url) return "";
+  const match =
+    url.match(/embed\/([^?&]+)/) ||
+    url.match(/v=([^?&]+)/) ||
+    url.match(/youtu\.be\/([^?&]+)/);
+  return match ? match[1] : "";
 }

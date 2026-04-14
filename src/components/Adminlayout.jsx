@@ -15,11 +15,7 @@ import {
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  {
-    path: "/akademik-dasturlar",
-    label: "Akademik Dasturlar",
-    icon: GraduationCap,
-  },
+  { path: "/akademik-dasturlar", label: "Dasturlar", icon: GraduationCap },
   { path: "/yangiliklar", label: "Yangiliklar", icon: Newspaper },
   { path: "/oqituvchilar", label: "O'qituvchilar", icon: Users },
   { path: "/qabul", label: "Qabul", icon: ClipboardList },
@@ -37,155 +33,130 @@ export default function AdminLayout() {
     navigate("/login");
   };
 
-  const getPageTitle = () => {
-    const item = navItems.find((n) =>
-      n.exact
-        ? location.pathname === n.path
-        : location.pathname.startsWith(n.path) && n.path !== "/",
-    );
-    return item?.label || "Dashboard";
-  };
+  const currentItem = navItems.find((n) =>
+    n.exact
+      ? location.pathname === n.path
+      : location.pathname.startsWith(n.path) && n.path !== "/",
+  );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
+    <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 lg:hidden bg-slate-900/40 backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 z-40 lg:hidden bg-slate-900/30 backdrop-blur-[2px]"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Width reduced to 240px for a tighter look */}
       <aside
-        className={`fixed top-0 left-0 h-full z-50 flex flex-col transition-transform duration-300 ease-in-out
-          lg:sticky lg:translate-x-0 lg:z-auto bg-white border-r border-slate-200
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-        style={{ width: "280px", minWidth: "280px" }}
+        className={`fixed top-0 left-0 h-full z-50 flex flex-col bg-white border-r border-slate-200 transition-transform duration-300 lg:sticky lg:translate-x-0 w-[240px] shrink-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
-        {/* Brand */}
-        <div className="px-6 py-6 border-b border-slate-100 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-[10px] font-black text-white shadow-lg shadow-blue-200">
+        {/* Brand Section */}
+        <div className="h-16 flex items-center px-5 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-[8px] font-black text-white">
               TATU
             </div>
-            <div className="min-w-0">
-              <div className="text-sm font-bold text-slate-900 truncate tracking-tight">
-                Engineering School
-              </div>
-              <div className="text-[11px] font-medium text-blue-600 uppercase tracking-widest">
-                Admin Panel
-              </div>
+            <div className="leading-tight">
+              <h1 className="text-sm font-bold truncate w-32">Engineering</h1>
+              <p className="text-[10px] font-medium text-blue-600 uppercase tracking-wider">
+                Admin
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 overflow-y-auto custom-scrollbar">
-          <div className="mb-4 px-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-              Asosiy Menyu
-            </span>
-          </div>
-          <ul className="space-y-1.5">
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  end={item.exact}
-                  onClick={() => setSidebarOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group ${
-                      isActive
-                        ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-100/50"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                    }`
+        {/* Navigation - Tighter padding */}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-1">
+          <p className="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Menu
+          </p>
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.exact}
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group ${
+                  isActive
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                }`
+              }
+            >
+              <div className="flex items-center gap-3">
+                <item.icon
+                  size={18}
+                  className={
+                    location.pathname === item.path ? "text-blue-600" : ""
                   }
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon
-                      size={20}
-                      className="transition-transform group-hover:scale-110"
-                    />
-                    {item.label}
-                  </div>
-                  <ChevronRight
-                    size={14}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  />
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+                />
+                {item.label}
+              </div>
+              <ChevronRight
+                size={12}
+                className="opacity-0 group-hover:opacity-40 transition-opacity"
+              />
+            </NavLink>
+          ))}
         </nav>
 
-        {/* User / Logout Section */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex-shrink-0">
-          <div className="flex items-center gap-3 px-3 py-3 mb-3 rounded-2xl bg-white border border-slate-200 shadow-sm">
-            <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-700 border border-slate-200">
-              A
+        {/* User & Logout - Compact Version */}
+        <div className="p-3 border-t border-slate-100 space-y-1">
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-50">
+            <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700">
+              AD
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold text-slate-900 truncate">
-                Admin
-              </div>
-              <div className="text-[11px] text-slate-500 truncate font-medium">
+            <div className="overflow-hidden">
+              <p className="text-xs font-bold truncate">Admin</p>
+              <p className="text-[10px] text-slate-400 truncate tracking-tight">
                 admin@tatu.uz
-              </div>
+              </p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-colors group"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
           >
-            <LogOut
-              size={20}
-              className="group-hover:translate-x-1 transition-transform"
-            />
-            Chiqish
+            <LogOut size={16} /> Chiqish
           </button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 lg:px-8 py-4 bg-white/80 backdrop-blur-md border-b border-slate-200 flex-shrink-0">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header - Slimmer (h-16) */}
+        <header className="h-16 flex items-center justify-between px-4 lg:px-8 bg-white border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-4">
             <button
-              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+              className="lg:hidden p-2 rounded-lg border border-slate-200 text-slate-600"
               onClick={() => setSidebarOpen(true)}
             >
-              <Menu size={20} />
+              <Menu size={18} />
             </button>
-
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 tracking-tight leading-none mb-1">
-                {getPageTitle()}
-              </h2>
-              <p className="text-[12px] font-medium text-slate-400 hidden sm:block capitalize">
-                {new Date().toLocaleDateString("uz-UZ", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
-            </div>
+            <h2 className="text-md font-bold text-slate-800">
+              {currentItem?.label || "Dashboard"}
+            </h2>
           </div>
 
-          {/* System Status */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-green-100 bg-green-50/50">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[11px] text-green-700 font-bold uppercase tracking-wider hidden sm:inline">
-              Online
-            </span>
+          <div className="text-[11px] font-medium text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full hidden sm:block">
+            {new Date().toLocaleDateString("uz-UZ", {
+              month: "long",
+              day: "numeric",
+              weekday: "short",
+            })}
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-8 overflow-y-auto custom-scrollbar bg-slate-50/50">
-          <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Scrollable Page Content */}
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar bg-slate-50">
+          {/* max-w-6xl ni olib tashladik yoki w-full qildik */}
+          <div className="w-full animate-in fade-in duration-500">
             <Outlet />
           </div>
         </main>
