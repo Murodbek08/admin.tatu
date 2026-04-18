@@ -1,11 +1,14 @@
+import { useState, useEffect } from "react";
 import { StatCard, Card, Badge } from "../components/Ui";
 import { Link } from "react-router-dom";
+import request from "../api"; // Axios instance
 import {
   GraduationCap,
   Newspaper,
   Users,
   ClipboardList,
   Mail,
+  Loader2,
 } from "lucide-react";
 
 const typeIcons = {
@@ -24,46 +27,60 @@ const typeColors = {
   aloqa: "red",
 };
 
-const recentActivity = [
-  {
-    action: "Yangi ariza qabul qilindi",
-    user: "Alisher Karimov",
-    time: "5 daq oldin",
-    type: "qabul",
-  },
-  {
-    action: "Yangilik e'lon qilindi",
-    user: "Admin",
-    time: "1 soat oldin",
-    type: "yangilik",
-  },
-  {
-    action: "Ustoz yangilandi",
-    user: "Admin",
-    time: "3 soat oldin",
-    type: "oqituvchi",
-  },
-  {
-    action: "MSc dasturi o'zgartirildi",
-    user: "Admin",
-    time: "Kecha",
-    type: "dastur",
-  },
-  {
-    action: "Aloqa xabari keldi",
-    user: "Nilufar",
-    time: "Kecha",
-    type: "aloqa",
-  },
-];
-
-const quickLinks = [
-  { label: "Yangi Dastur", href: "/akademik-dasturlar", icon: GraduationCap },
-  { label: "Yangiliklar", href: "/yangiliklar", icon: Newspaper },
-  { label: "Ustozlar", href: "/oqituvchilar", icon: Users },
-];
-
 export default function Dashboard() {
+  const [stats, setStats] = useState({
+    programs: 0,
+    news: 0,
+    teachers: 0,
+    messages: 0,
+  });
+  const [recentMessages, setRecentMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      // Barcha ma'lumotlarni parallel ravishda olish
+      const [progRes, newsRes, teachRes, msgRes] = await Promise.all([
+        request.get("/academic_programs?select=count", {
+          headers: { Prefer: "count=exact" },
+        }),
+        request.get("/news?select=count", {
+          headers: { Prefer: "count=exact" },
+        }),
+        request.get("/faculty?select=count", {
+          headers: { Prefer: "count=exact" },
+        }),
+        request.get("/contact_messages?order=created_at.desc&limit=5"), // So'nggi 5 ta xabar
+      ]);
+
+      setStats({
+        programs: progRes.headers["content-range"]?.split("/")[1] || 0,
+        news: newsRes.headers["content-range"]?.split("/")[1] || 0,
+        teachers: teachRes.headers["content-range"]?.split("/")[1] || 0,
+        messages: msgRes.data.length,
+      });
+
+      setRecentMessages(msgRes.data || []);
+    } catch (error) {
+      console.error("Dashboard yuklashda xatolik:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="animate-spin text-blue-600" size={40} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Stat cards */}
@@ -71,89 +88,136 @@ export default function Dashboard() {
         <StatCard
           icon={GraduationCap}
           label="Dasturlar"
-          value="12"
-          trend={8}
+          value={stats.programs}
+          trend={+2}
           color="blue"
         />
         <StatCard
           icon={Newspaper}
           label="Yangiliklar"
-          value="47"
-          trend={12}
+          value={stats.news}
+          trend={+5}
           color="blue"
         />
         <StatCard
           icon={Users}
           label="Ustozlar"
-          value="89"
-          trend={3}
+          value={stats.teachers}
+          trend={+1}
           color="green"
         />
         <StatCard
-          icon={ClipboardList}
-          label="Arizalar"
-          value="234"
-          trend={-5}
+          icon={Mail}
+          label="Xabarlar"
+          value={stats.messages || 0}
+          trend={stats.messages > 0 ? 5 : 0}
           color="red"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* So'nggi faoliyat */}
+        {/* So'nggi murojaatlar (Contact Messages) */}
         <div className="lg:col-span-2">
           <Card>
-            <div className="px-6 py-5 border-b border-slate-100 font-bold">
-              So'nggi Faoliyat
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
+              <span className="font-bold">So'nggi Murojaatlar</span>
+              <Link
+                to="/aloqa"
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Hammasini ko'rish
+              </Link>
             </div>
             <div className="divide-y divide-slate-50">
-              {recentActivity.map((item, i) => {
-                const Icon = typeIcons[item.type];
-                return (
+              {recentMessages.length > 0 ? (
+                recentMessages.map((item) => (
                   <div
-                    key={i}
-                    className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50"
+                    key={item.id}
+                    className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
-                      {Icon ? <Icon size={20} /> : null}
+                    <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500">
+                      <Mail size={20} />
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-slate-900">
-                        {item.action}
+                        {item.name}
                       </p>
-                      <p className="text-xs text-slate-500">
-                        {item.user} • {item.time}
+                      <p className="text-xs text-slate-500 truncate max-w-[200 md:max-w-md]">
+                        {item.message}
                       </p>
                     </div>
-                    <Badge color={typeColors[item.type]}>{item.type}</Badge>
+                    <div className="text-right">
+                      <Badge color="red">aloqa</Badge>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                );
-              })}
+                ))
+              ) : (
+                <div className="p-10 text-center text-slate-400 text-sm italic">
+                  Hozircha xabarlar yo'q
+                </div>
+              )}
             </div>
           </Card>
         </div>
 
         {/* Tezkor havolalar */}
         <div className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-xs font-bold text-slate-400 mb-4 uppercase">
-              Tezkor Havolalar
+          <Card className="p-6 shadow-sm border-slate-100">
+            <h3 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider">
+              Tezkor Boshqaruv
             </h3>
             <div className="space-y-2">
-              {quickLinks.map((link) => {
-                const Icon = link.icon;
-                return (
-                  <Link
-                    key={link.label}
-                    to={link.href}
-                    className="flex items-center gap-3 p-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-all"
-                  >
-                    {Icon ? <Icon size={18} /> : null}
-                    <span>{link.label}</span>
-                  </Link>
-                );
-              })}
+              {[
+                {
+                  label: "Yangi Dastur",
+                  href: "/akademik-dasturlar",
+                  icon: GraduationCap,
+                  color: "hover:bg-blue-50 hover:text-blue-600",
+                },
+                {
+                  label: "Yangilik qo'shish",
+                  href: "/yangiliklar",
+                  icon: Newspaper,
+                  color: "hover:bg-indigo-50 hover:text-indigo-600",
+                },
+                {
+                  label: "Ustoz qo'shish",
+                  href: "/oqituvchilar",
+                  icon: Users,
+                  color: "hover:bg-emerald-50 hover:text-emerald-600",
+                },
+                {
+                  label: "Xabarlarni o'qish",
+                  href: "/aloqa",
+                  icon: Mail,
+                  color: "hover:bg-red-50 hover:text-red-600",
+                },
+              ].map((link) => (
+                <Link
+                  key={link.label}
+                  to={link.href}
+                  className={`flex items-center gap-3 p-3 rounded-xl text-sm font-bold text-slate-600 transition-all ${link.color}`}
+                >
+                  <link.icon size={18} />
+                  <span>{link.label}</span>
+                </Link>
+              ))}
             </div>
           </Card>
+
+          {/* Mini Info Card */}
+          <div className="bg-slate-900 rounded-3xl p-6 text-white relative overflow-hidden group">
+            <div className="absolute -right-4 -bottom-4 text-white/10 group-hover:scale-110 transition-transform">
+              <GraduationCap size={120} />
+            </div>
+            <h4 className="font-black text-xl mb-2">TUIT Admin</h4>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              Tizimni nazorat qilish va ma'lumotlarni yangilash bo'limi.
+            </p>
+          </div>
         </div>
       </div>
     </div>
